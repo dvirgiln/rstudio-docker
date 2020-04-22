@@ -1,0 +1,68 @@
+version: "3"
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:10-alpine
+    container_name: "postgres"
+    hostname: postgres
+    restart: always
+    env_file:
+      - ./env/postgres-dev.env
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./data/common:/data/common
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+    networks:
+      - jupyterhub-net
+      - postgres-net
+
+  proxy:
+    image: jupyterhub/configurable-http-proxy:latest
+    networks:
+      - jupyterhub-net
+    # Expose the proxy port for services outside the overlay
+    # docker network
+    ports:
+      - "8000:8000"
+    command:
+      - configurable-http-proxy
+      - '--ip 0.0.0.0'
+      - '--port 8000'
+      - '--api-ip 0.0.0.0'
+      - '--api-port 8001' 
+      - '--error-target'
+      - 'http://hub/hub/error'
+
+  hub:
+    depends_on:
+      - postgres
+      - proxy
+    build:
+      context: "./"
+      dockerfile: "Dockerfile"
+    volumes:
+      # Important: Mount the docker socket so that the Hub is able
+      # to launch docker services on the manager node
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./jupyterhub_config.py:/srv/jupyterhub/jupyterhub_config.py"
+      - "./imgprep.py:/srv/jupyterhub/imgprep.py"
+    environment:
+      POSTGRES_DB: jupyter
+      POSTGRES_HOST: postgres
+    env_file:
+      - ./env/postgres-dev.env
+    networks:
+      - jupyterhub-net
+      - postgres-net
+
+networks:
+  jupyterhub-net:
+
+  postgres-net:
