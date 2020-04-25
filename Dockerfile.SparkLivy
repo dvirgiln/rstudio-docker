@@ -1,0 +1,51 @@
+# select operating system
+FROM bde2020/spark-master:latest
+
+ENV LIVY_VERSION=0.7.0-incubating
+ENV LIVY_HOME /livy
+
+# install operating system packages
+RUN apk add --no-cache git curl gettext unzip wget make
+
+# add config, init and source files
+# entrypoint
+ADD livy/init/entrypoint2 /opt/docker-init/entrypoint
+
+
+#RUN curl -Lo- "https://raw.githubusercontent.com/bpkg/bpkg/master/setup.sh" | bash
+#ENV PATH=/root/.local/bin:$PATH
+#RUN bpkg install cha87de/bashutil -g
+
+
+USER root
+
+
+RUN chmod +x /opt/docker-init/entrypoint
+# folders
+RUN mkdir /var/apache-spark-binaries/
+
+# binaries
+# apache livy
+RUN wget http://mirror.23media.de/apache/incubator/livy/${LIVY_VERSION}/apache-livy-${LIVY_VERSION}-bin.zip -O /tmp/livy.zip
+RUN unzip /tmp/livy.zip -d /tmp
+RUN mv /tmp/apache-livy-0.7.0-incubating-bin ${LIVY_HOME}
+RUN rm /tmp/livy.zip
+
+# Logging dir
+ADD livy/conf/livy.conf ${LIVY_HOME}/conf/livy.conf
+
+RUN mkdir -p /opt/spark/logs
+RUN mkdir -p ${LIVY_HOME}/logs
+
+ENV SPARK_MASTER_LOG=/opt/spark/logs
+ENV SPARK_MASTER_ENDPOINT=spark-master
+ENV SPARK_MASTER_PORT=7077
+ENV SPARK_MASTER=yarn
+ENV SPARK_HOME=/spark
+
+# expose ports
+EXPOSE 8998
+
+# start from init folder
+WORKDIR /opt/docker-init
+CMD ["./entrypoint"]

@@ -1,7 +1,16 @@
 # Configuration file for jupyterhub (postgres example).
+import time
+time.sleep(30)
 
 c = get_config()
+# Set the log level by value or name.
+c.JupyterHub.log_level = 'DEBUG'
 
+# Enable debug-logging of the single-user server
+c.Spawner.debug = True
+
+# Enable debug-logging of the single-user server
+c.LocalProcessSpawner.debug = True
 # Add some users.
 c.JupyterHub.admin_users = {'admin'}
 c.Authenticator.whitelist = {'ganymede', 'io', 'rhea'}
